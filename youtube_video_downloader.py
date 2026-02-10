@@ -2,7 +2,7 @@ import yt_dlp
 import os
 
 
-def download_video(url, output_path='downloads', quality='best'):
+def download_video(url, output_path='downloads', quality='best', download_subtitles=False):
     """
     YouTubeのURLから動画をダウンロードする
 
@@ -10,6 +10,7 @@ def download_video(url, output_path='downloads', quality='best'):
         url (str): YouTubeの動画URL
         output_path (str): 保存先ディレクトリ（デフォルト: 'downloads'）
         quality (str): 動画品質（'best', 'high', 'medium', 'low'）
+        download_subtitles (bool): 字幕をダウンロードするかどうか（デフォルト: False）
     """
     # 保存先ディレクトリが存在しない場合は作成
     if not os.path.exists(output_path):
@@ -47,15 +48,40 @@ def download_video(url, output_path='downloads', quality='best'):
         'cookiefile': None,  # 必要に応じてCookieファイルのパスを指定
     }
 
+    # 字幕ダウンロード設定
+    if download_subtitles:
+        ydl_opts['writesubtitles'] = True  # 字幕をダウンロード
+        ydl_opts['writeautomaticsub'] = True  # 自動生成字幕もダウンロード
+        ydl_opts['subtitleslangs'] = ['ja', 'en']  # 日本語と英語の字幕
+        ydl_opts['subtitlesformat'] = 'srt'  # SRT形式で保存
+
     try:
         print(f"ダウンロード開始: {url}")
         print(f"品質設定: {quality}")
+        if download_subtitles:
+            print("字幕ダウンロード: 有効")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # 動画情報を取得
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
             print(f"ダウンロード完了: {filename}")
+
+            # 字幕ファイルの確認
+            if download_subtitles:
+                base_filename = os.path.splitext(filename)[0]
+                subtitle_files = []
+                for lang in ['ja', 'en']:
+                    subtitle_file = f"{base_filename}.{lang}.srt"
+                    if os.path.exists(subtitle_file):
+                        subtitle_files.append(subtitle_file)
+                        print(f"字幕ファイル: {subtitle_file}")
+
+                if subtitle_files:
+                    print(f"✓ {len(subtitle_files)}個の字幕ファイルをダウンロードしました")
+                else:
+                    print("字幕ファイルが見つかりませんでした（この動画には字幕がない可能性があります）")
+
             return filename
     except Exception as e:
         print(f"エラーが発生しました: {str(e)}")
@@ -98,8 +124,13 @@ def main():
 
         quality = quality_map.get(choice, 'best')
 
+        # 字幕ダウンロードの確認
+        print("\n字幕もダウンロードしますか?")
+        subtitle_choice = input("はい (y) / いいえ (n, デフォルトはいいえ): ").strip().lower()
+        download_subtitles = subtitle_choice in ['y', 'yes', 'はい', 'ハイ']
+
         # ダウンロード実行
-        result = download_video(url, quality=quality)
+        result = download_video(url, quality=quality, download_subtitles=download_subtitles)
 
         if result:
             print(f"\n✓ 保存されました: {result}")
